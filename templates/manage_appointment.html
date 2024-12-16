@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Manage Appointments{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-16">
+    <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Manage Appointments</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="mb-4 p-4 rounded 
+                    {% if category == 'error' %}bg-red-100 text-red-700{% endif %}
+                    {% if category == 'success' %}bg-green-100 text-green-700{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        {% if appointments %}
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for appointment in appointments %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">{{ appointment.student_name }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">{{ appointment.date }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">{{ appointment.time }}</td>
+                    <td class="px-6 py-4">{{ appointment.reason or 'No reason provided' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="
+                                px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if appointment.status == 'pending' %}bg-yellow-100 text-yellow-800
+                                {% elif appointment.status == 'confirmed' %}bg-green-100 text-green-800
+                                {% else %}bg-red-100 text-red-800{% endif %}">
+                            {{ appointment.status }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <form action="{{ url_for('update_appointment', appointment_id=appointment.id) }}" method="POST"
+                            class="inline">
+                            <select name="status" onchange="this.form.submit()"
+                                class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                <option value="pending" {% if appointment.status=='pending' %}selected{% endif %}>
+                                    Pending</option>
+                                <option value="confirmed" {% if appointment.status=='confirmed' %}selected{% endif %}>
+                                    Confirm</option>
+                                <option value="cancelled" {% if appointment.status=='cancelled' %}selected{% endif %}>
+                                    Cancel</option>
+                            </select>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="p-6 text-center text-gray-500">
+            No appointments available
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

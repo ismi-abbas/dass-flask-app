@@ -14,7 +14,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_session import Session
 from constant import DASS_QUESTIONS
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
+import functools
 
 app = Flask(__name__)
 
@@ -40,6 +41,14 @@ def dateformat(value, format="%Y-%m-%d"):
 
 
 app.jinja_env.filters["dateformat"] = dateformat
+
+
+def get_current_datetime():
+    return datetime.now()
+
+
+app.jinja_env.globals["now"] = get_current_datetime
+app.jinja_env.globals["timedelta"] = timedelta
 
 
 @app.route("/")
@@ -136,6 +145,22 @@ def login():
     return render_template("login.html")
 
 
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+@app.route("/user/settings")
+def settings():
+    return render_template("settings.html")
+
+
+@app.route("/counsellor/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
+
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -178,6 +203,258 @@ def register():
             return redirect(url_for("register"))
 
     return render_template("register.html")
+
+
+@app.route("/get_user_info")
+def get_user_info():
+    if not session.get("user_id"):
+        return jsonify({"error": "Not logged in"}), 401
+
+    try:
+        conn = get_db_connection()
+        user = conn.execute(
+            "SELECT username, email FROM students WHERE id = ?", (session["user_id"],)
+        ).fetchone()
+        conn.close()
+
+        return jsonify(
+            {
+                "username": user["username"],
+                "email": user["email"],
+                "notifications": True,  # Placeholder, add a notifications column to users table
+            }
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/update_user_settings", methods=["POST"])
+def update_user_settings():
+    if not session.get("user_id"):
+        return jsonify({"success": False, "message": "Not logged in"}), 401
+
+    data = request.get_json()
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Update username and email
+        cursor.execute(
+            "UPDATE students SET username = ?, email = ? WHERE id = ?",
+            (data["username"], data["email"], session["user_id"]),
+        )
+
+        # Update password if provided
+        if "password" in data and data["password"]:
+            hashed_password = generate_password_hash(data["password"])
+            cursor.execute(
+                "UPDATE students SET password = ? WHERE id = ?",
+                (hashed_password, session["user_id"]),
+            )
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route("/delete_account", methods=["POST"])
+def delete_account():
+    if not session.get("user_id"):
+        return jsonify({"success": False, "message": "Not logged in"}), 401
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Delete user and associated data
+        cursor.execute(
+            "DELETE FROM dass_score WHERE user_id = ?", (session["user_id"],)
+        )
+        cursor.execute("DELETE FROM students WHERE id = ?", (session["user_id"],))
+
+        conn.commit()
+        conn.close()
+
+        # Clear session
+        session.clear()
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+@app.route("/counsellor/stats")
+def counsellor_stats():
+    if not session.get("user_id"):
+        return jsonify({"error": "Not logged in"}), 401
+
+    try:
+        conn = get_db_connection()
+
+        # Total students
+        total_students = conn.execute(
+            "SELECT COUNT(*) as count FROM students"
+        ).fetchone()["count"]
+
+        # Monthly assessments
+        monthly_assessments = conn.execute(
+            """
+            SELECT COUNT(*) as count 
+            FROM dass_score 
+            WHERE strftime('%Y-%m', date_taken) = strftime('%Y-%m', 'now')
+        """
+        ).fetchone()["count"]
+
+        # High-risk students (define high-risk as having severe scores in any category)
+        high_risk_students = conn.execute(
+            """
+            SELECT COUNT(DISTINCT user_id) as count 
+            FROM dass_score 
+            WHERE depression_score > 20 OR anxiety_score > 10 OR stress_score > 16
+        """
+        ).fetchone()["count"]
+
+        conn.close()
+
+        return jsonify(
+            {
+                "totalStudents": total_students,
+                "monthlyAssessments": monthly_assessments,
+                "highRiskStudents": high_risk_students,
+            }
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/counsellor/recent_assessments")
+def recent_assessments():
+    if not session.get("user_id"):
+        return jsonify({"error": "Not logged in"}), 401
+
+    try:
+        conn = get_db_connection()
+
+        # Fetch recent assessments with student details
+        assessments = conn.execute(
+            """
+            SELECT 
+                ds.id, 
+                s.username as student_name, 
+                ds.date_taken as date, 
+                ds.depression_score, 
+                ds.anxiety_score, 
+                ds.stress_score
+            FROM dass_score ds
+            JOIN students s ON ds.user_id = s.id
+            ORDER BY ds.date_taken DESC
+            LIMIT 10
+        """
+        ).fetchall()
+
+        conn.close()
+
+        # Convert to list of dictionaries
+        return jsonify([dict(assessment) for assessment in assessments])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/counsellor/upcoming_appointments")
+def upcoming_appointments():
+    if not session.get("user_id"):
+        return jsonify({"error": "Not logged in"}), 401
+
+    try:
+        conn = get_db_connection()
+
+        # Fetch upcoming appointments with student details
+        # Note: You'll need to create an appointments table first
+        appointments = conn.execute(
+            """
+            SELECT 
+                a.id, 
+                s.username as student_name, 
+                a.date, 
+                a.time, 
+                a.status
+            FROM appointments a
+            JOIN students s ON a.student_id = s.id
+            WHERE a.date >= date('now')
+            ORDER BY a.date, a.time
+            LIMIT 10
+        """
+        ).fetchall()
+
+        conn.close()
+
+        # Convert to list of dictionaries
+        return jsonify([dict(appointment) for appointment in appointments])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/book_appointment", methods=["GET", "POST"])
+def book_appointment():
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        data = request.get_json()
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # Check if the student already has a pending or confirmed appointment
+            existing_appointment = cursor.execute(
+                "SELECT * FROM appointments WHERE student_id = ? AND status IN ('pending', 'confirmed')",
+                (session["user_id"],),
+            ).fetchone()
+
+            if existing_appointment:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "message": "You already have a pending or confirmed appointment.",
+                        }
+                    ),
+                    400,
+                )
+
+            # Insert new appointment
+            cursor.execute(
+                """
+                INSERT INTO appointments 
+                (student_id, date, time, reason, status) 
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    session["user_id"],
+                    data.get("date"),
+                    data.get("time"),
+                    data.get("reason", "General Counselling"),
+                    "pending",
+                ),
+            )
+
+            conn.commit()
+            conn.close()
+
+            return jsonify(
+                {"success": True, "message": "Appointment booked successfully!"}
+            )
+
+        except Exception as e:
+            return jsonify({"success": False, "message": str(e)}), 500
+
+    # GET request - render booking page
+    return render_template("book_appointment.html")
 
 
 def calculate_category_score(answers, category):
@@ -225,6 +502,270 @@ def interpret_scores(scores):
                 break
 
     return result
+
+
+# Decorator for counsellor-only routes
+def counsellor_required(f):
+    @functools.wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get("user_id"):
+            return redirect(url_for("login"))
+
+        conn = get_db_connection()
+        user = conn.execute(
+            "SELECT role FROM students WHERE id = ?", (session["user_id"],)
+        ).fetchone()
+        conn.close()
+
+        if not user or user["role"] != "counsellor":
+            flash("Access denied. Counsellor privileges required.", "error")
+            return redirect(url_for("index"))
+
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+@app.route("/counsellor/register", methods=["GET", "POST"])
+def counsellor_register():
+    if request.method == "POST":
+        username = request.form.get("username")
+        email = request.form.get("email")
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
+        phone = request.form.get("phone", "")
+
+        # Validation
+        if not username or not email or not password:
+            flash("All fields are required", "error")
+            return redirect(url_for("counsellor_register"))
+
+        if password != confirm_password:
+            flash("Passwords do not match", "error")
+            return redirect(url_for("counsellor_register"))
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # Check if username or email already exists in counsellors
+            existing_user = cursor.execute(
+                "SELECT * FROM counsellors WHERE username = ? OR email = ?",
+                (username, email),
+            ).fetchone()
+
+            if existing_user:
+                flash("Username or email already exists", "error")
+                return redirect(url_for("counsellor_register"))
+
+            # Hash the password
+            hashed_password = generate_password_hash(password)
+
+            # Insert new counsellor
+            cursor.execute(
+                """
+                INSERT INTO counsellors 
+                (username, email, password, phone) 
+                VALUES (?, ?, ?, ?)
+                """,
+                (username, email, hashed_password, phone),
+            )
+            conn.commit()
+            conn.close()
+
+            flash("Counsellor registration successful", "success")
+            return redirect(url_for("login"))
+
+        except Exception as e:
+            flash(f"Registration error: {str(e)}", "error")
+            return redirect(url_for("counsellor_register"))
+
+    return render_template("counsellor_register.html")
+
+
+@app.route("/counsellor/appointments")
+def manage_appointments():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Fetch appointments with student details
+        appointments = cursor.execute(
+            """
+            SELECT 
+                a.id, 
+                s.username as student_name, 
+                a.date, 
+                a.time, 
+                a.reason, 
+                a.status,
+                a.created_at
+            FROM appointments a
+            JOIN students s ON a.student_id = s.id
+            ORDER BY a.created_at DESC
+            """
+        ).fetchall()
+        conn.close()
+
+        return render_template("manage_appointments.html", appointments=appointments)
+    except Exception as e:
+        flash(f"Error fetching appointments: {str(e)}", "error")
+        return redirect(url_for("index"))
+
+
+@app.route("/counsellor/update_appointment/<int:appointment_id>", methods=["POST"])
+def update_appointment(appointment_id):
+    status = request.form.get("status")
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Update appointment status
+        cursor.execute(
+            "UPDATE appointments SET status = ? WHERE id = ?", (status, appointment_id)
+        )
+        conn.commit()
+        conn.close()
+
+        flash("Appointment updated successfully", "success")
+        return redirect(url_for("manage_appointments"))
+    except Exception as e:
+        flash(f"Error updating appointment: {str(e)}", "error")
+        return redirect(url_for("manage_appointments"))
+
+
+@app.route("/counsellor/appointments")
+@counsellor_required
+def counsellor_appointments():
+    try:
+        conn = get_db_connection()
+        appointments = conn.execute(
+            """
+            SELECT 
+                a.id, 
+                s.username as student_name, 
+                a.date, 
+                a.time, 
+                a.reason, 
+                a.status
+            FROM appointments a
+            JOIN students s ON a.student_id = s.id
+            ORDER BY a.date, a.time
+            """
+        ).fetchall()
+        conn.close()
+
+        return render_template("manage_appointments.html", appointments=appointments)
+    except Exception as e:
+        flash(f"Error fetching appointments: {str(e)}", "error")
+        return redirect(url_for("counsellor_dashboard"))
+
+
+@app.route("/counsellor/update_appointment/<int:appointment_id>", methods=["POST"])
+@counsellor_required
+def counsellor_update_appointment(appointment_id):
+    status = request.form.get("status")
+
+    try:
+        conn = get_db_connection()
+        conn.execute(
+            "UPDATE appointments SET status = ? WHERE id = ?", (status, appointment_id)
+        )
+        conn.commit()
+        conn.close()
+
+        flash("Appointment updated successfully", "success")
+        return redirect(url_for("counsellor_appointments"))
+    except Exception as e:
+        flash(f"Error updating appointment: {str(e)}", "error")
+        return redirect(url_for("counsellor_appointments"))
+
+
+@app.route("/counsellor/login", methods=["GET", "POST"])
+def counsellor_login():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # Check if counsellor exists
+            counsellor = cursor.execute(
+                "SELECT * FROM counsellors WHERE email = ?", (email,)
+            ).fetchone()
+
+            if counsellor and check_password_hash(counsellor["password"], password):
+                # Create a user object compatible with Flask-Login
+                class CounsellorUser:
+                    def __init__(self, counsellor):
+                        self.id = counsellor["id"]
+                        self.username = counsellor["username"]
+                        self.email = counsellor["email"]
+                        self.is_authenticated = True
+                        self.is_active = True
+                        self.is_anonymous = False
+
+                    def get_id(self):
+                        return str(self.id)
+
+                user = CounsellorUser(counsellor)
+                login_user(user)
+
+                flash("Counsellor login successful!", "success")
+                return redirect(url_for("counsellor_dashboard"))
+            else:
+                flash("Invalid email or password", "error")
+                return redirect(url_for("counsellor_login"))
+
+        except Exception as e:
+            flash(f"Login error: {str(e)}", "error")
+            return redirect(url_for("counsellor_login"))
+
+    return render_template("counsellor_login.html")
+
+
+@app.route("/counsellor/dashboard")
+@counsellor_required
+def counsellor_dashboard():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Fetch dashboard statistics
+        total_students = cursor.execute(
+            "SELECT COUNT(*) as count FROM students"
+        ).fetchone()["count"]
+
+        monthly_assessments = cursor.execute(
+            """
+            SELECT COUNT(*) as count 
+            FROM dass_score 
+            WHERE date_taken >= date('now', '-1 month')
+            """
+        ).fetchone()["count"]
+
+        high_risk_students = cursor.execute(
+            """
+            SELECT COUNT(*) as count 
+            FROM dass_score 
+            WHERE depression_score > 20 OR anxiety_score > 20 OR stress_score > 20
+            """
+        ).fetchone()["count"]
+
+        conn.close()
+
+        return render_template(
+            "counsellor_dashboard.html",
+            total_students=total_students,
+            monthly_assessments=monthly_assessments,
+            high_risk_students=high_risk_students,
+        )
+    except Exception as e:
+        flash(f"Dashboard error: {str(e)}", "error")
+        return redirect(url_for("index"))
 
 
 init_db()

@@ -1,100 +1,47 @@
 {% extends "base.html" %}
 {% block title %} Home {% endblock title %}
+
 {% block content %}
+<div class="container mx-auto px-4 py-16">
+  <div class="max-w-4xl mx-auto text-center">
+    <h1 class="text-5xl font-bold mb-6 text-gray-800">Depression, Anxiety, and Stress Assessment</h1>
+    <p class="text-xl text-gray-600 mb-10">A scientifically validated screening tool to help you understand your mental
+      health.</p>
 
-<div class="w-full mt-20 mb-10 px-20 py-8">
-  <h1 class="text-3xl font-bold mb-6 text-center">
-    Depression Anxiety Stress Test (DASS-21)
-  </h1>
+    <div class="grid md:grid-cols-3 gap-8 mb-12">
+      <div class="bg-blue-100 p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-blue-800 mb-4">Depression</h3>
+        <p class="text-gray-700">Identify symptoms of low mood, lack of motivation, and feelings of hopelessness.</p>
+      </div>
 
-  <div class="mb-6">
-    <div class="text-sm text-gray-600">
-      Please rate how much the following statements applied to you over the past week.
-    </div>
-    <div class="text-semibold">Question 1 of 21</div>
-  </div>
+      <div class="bg-green-100 p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-green-800 mb-4">Anxiety</h3>
+        <p class="text-gray-700">Recognize signs of excessive worry, nervousness, and physiological stress responses.
+        </p>
+      </div>
 
-  <form id="dass-form" class="space-y-6">
-    {% for question in questions %}
-    <div class="question-block border-b pb-4s">
-      <p class="mb-3 font-semibold">{{ question.text }}</p>
-      <div class="flex space-x-4">
-        {% for i in range(4) %}
-        <label class="flex items-center space-x-2">
-          <input type="radio" name="question_{{ question.id }}" value="{{ i }}" class="form-radio"
-            data-question-id="{{ question.id }}" data-category="{{ question.category }}" />
-          <span>{{ ['Did not apply to me at all', 'Applied to me to some degree',
-            'Applied to me to a considerable degree', 'Applied to me very
-            much'][i] }}</span>
-        </label>
-        {% endfor %}
+      <div class="bg-red-100 p-6 rounded-lg shadow-md">
+        <h3 class="text-2xl font-semibold text-red-800 mb-4">Stress</h3>
+        <p class="text-gray-700">Assess your ability to cope with daily pressures and emotional strain.</p>
       </div>
     </div>
-    {% endfor %}
-    <button type="submit" class="w-full bg-blue-500 text-white py-3 rounded hover:bg-blue-600 transition">
-      Submit Assessment
-    </button>
-  </form>
 
-  <div id="results" class="hidden mt-6 p-4 bg-gray-50 rounded">
-    <h2 class="text-xl font-bold mb-4">Your Results</h2>
-    <div id="result-details"></div>
+    <div class="bg-white border border-gray-200 rounded-lg p-8 shadow-lg">
+      <h2 class="text-3xl font-bold mb-6 text-gray-800">About the DASS-21</h2>
+      <p class="text-gray-700 mb-4">
+        The Depression, Anxiety, and Stress Scale (DASS-21) is a 21-question psychological assessment
+        designed to measure the severity of core symptoms of depression, anxiety, and stress.
+      </p>
+      <p class="text-gray-700 mb-6">
+        By answering a series of statements, you'll receive insights into your current mental health state.
+        Remember, this is a screening tool and not a clinical diagnosis.
+      </p>
+
+      <a href="/question/1"
+        class="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105">
+        Start Assessment
+      </a>
+    </div>
   </div>
 </div>
-
-<script>
-  document
-    .getElementById("dass-form")
-    .addEventListener("submit", function (e) {
-      e.preventDefault();
-
-      const answers = [];
-      document
-        .querySelectorAll('input[type="radio"]:checked')
-        .forEach((radio) => {
-          answers.push({
-            questionId: parseInt(radio.dataset.questionId),
-            category: radio.dataset.category,
-            score: parseInt(radio.value),
-          });
-        });
-
-      fetch("/submit", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ answers }),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          const resultsDiv = document.getElementById("results");
-          const resultDetails = document.getElementById("result-details");
-
-          resultDetails.innerHTML = `
-                    <div class="grid grid-cols-3 gap-4">
-                        ${Object.entries(data.scores)
-              .map(
-                ([category, score]) => `
-                            <div class="p-4 bg-white rounded shadow">
-                                <h3 class="font-bold capitalize">${category}</h3>
-                                <p>Score: ${score}</p>
-                                <p>Level: ${data.interpretation[category].level}</p>
-                            </div>
-                        `
-              )
-              .join("")}
-                    </div>
-                `;
-
-          resultsDiv.classList.remove("hidden");
-        })
-        .catch((error) => {
-          console.error("Error:", error);
-          alert("An error occurred while submitting the test.");
-        });
-    });
-</script>
-
 {% endblock content %}
-</div>

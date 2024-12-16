@@ -9,7 +9,8 @@ def get_db_connection():
 
 def init_db():
     conn = get_db_connection()
-    conn.execute(
+    cursor = conn.cursor()
+    cursor.execute(
         """CREATE TABLE IF NOT EXISTS dass_score (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -22,7 +23,7 @@ def init_db():
         """
     )
 
-    conn.execute(
+    cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS counsellors (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,21 +35,22 @@ def init_db():
         )
         """
     )
-    conn.execute(
+    cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS appointments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            counselor_id INTEGER NOT NULL,
+            student_id INTEGER NOT NULL,
             date TEXT NOT NULL,
             time TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users (id),
-            FOREIGN KEY (counselor_id) REFERENCES counselors (id)
+            reason TEXT,
+            status TEXT CHECK(status IN ('pending', 'confirmed', 'cancelled')) DEFAULT 'pending',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (student_id) REFERENCES students (id)
         )
     """
     )
 
-    conn.execute(
+    cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS students (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,4 +63,5 @@ def init_db():
         )
         """
     )
+    conn.commit()
     conn.close()
