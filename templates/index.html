@@ -1,108 +1,100 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>DASS-21 Test</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body class="bg-gray-100 min-h-screen flex items-center justify-center">
-    <div id="app" class="w-full max-w-4xl p-8 bg-white rounded-lg shadow-lg">
-      <h1 class="text-2xl font-bold mb-6 text-center">
-        Depression Anxiety Stress Test (DASS-21)
-      </h1>
+{% extends "base.html" %}
+{% block title %} Home {% endblock title %}
+{% block content %}
 
-      <form id="dass-form" class="space-y-6">
-        {% for question in questions %}
-        <div class="question-block border-b pb-4">
-          <p class="mb-3 font-semibold">{{ question.text }}</p>
-          <div class="flex space-x-4">
-            {% for i in range(4) %}
-            <label class="flex items-center space-x-2">
-              <input
-                type="radio"
-                name="question_{{ question.id }}"
-                value="{{ i }}"
-                class="form-radio"
-                data-question-id="{{ question.id }}"
-                data-category="{{ question.category }}"
-              />
-              <span
-                >{{ ['Did not apply to me at all', 'Applied to me to some
-                degree', 'Applied to me to a considerable degree', 'Applied to
-                me very much'][i] }}</span
-              >
-            </label>
-            {% endfor %}
-          </div>
-        </div>
+<div class="w-full mt-20 mb-10 px-20 py-8">
+  <h1 class="text-3xl font-bold mb-6 text-center">
+    Depression Anxiety Stress Test (DASS-21)
+  </h1>
+
+  <div class="mb-6">
+    <div class="text-sm text-gray-600">
+      Please rate how much the following statements applied to you over the past week.
+    </div>
+    <div class="text-semibold">Question 1 of 21</div>
+  </div>
+
+  <form id="dass-form" class="space-y-6">
+    {% for question in questions %}
+    <div class="question-block border-b pb-4s">
+      <p class="mb-3 font-semibold">{{ question.text }}</p>
+      <div class="flex space-x-4">
+        {% for i in range(4) %}
+        <label class="flex items-center space-x-2">
+          <input type="radio" name="question_{{ question.id }}" value="{{ i }}" class="form-radio"
+            data-question-id="{{ question.id }}" data-category="{{ question.category }}" />
+          <span>{{ ['Did not apply to me at all', 'Applied to me to some degree',
+            'Applied to me to a considerable degree', 'Applied to me very
+            much'][i] }}</span>
+        </label>
         {% endfor %}
-
-        <button
-          type="submit"
-          class="w-full bg-blue-500 text-white py-3 rounded hover:bg-blue-600 transition"
-        >
-          Submit Assessment
-        </button>
-      </form>
-
-      <div id="results" class="hidden mt-6 p-4 bg-gray-50 rounded">
-        <h2 class="text-xl font-bold mb-4">Your Results</h2>
-        <div id="result-details"></div>
       </div>
     </div>
+    {% endfor %}
+    <button type="submit" class="w-full bg-blue-500 text-white py-3 rounded hover:bg-blue-600 transition">
+      Submit Assessment
+    </button>
+  </form>
 
-    <script>
+  <div id="results" class="hidden mt-6 p-4 bg-gray-50 rounded">
+    <h2 class="text-xl font-bold mb-4">Your Results</h2>
+    <div id="result-details"></div>
+  </div>
+</div>
+
+<script>
+  document
+    .getElementById("dass-form")
+    .addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const answers = [];
       document
-        .getElementById("dass-form")
-        .addEventListener("submit", function (e) {
-          e.preventDefault();
+        .querySelectorAll('input[type="radio"]:checked')
+        .forEach((radio) => {
+          answers.push({
+            questionId: parseInt(radio.dataset.questionId),
+            category: radio.dataset.category,
+            score: parseInt(radio.value),
+          });
+        });
 
-          const answers = [];
-          document
-            .querySelectorAll('input[type="radio"]:checked')
-            .forEach((radio) => {
-              answers.push({
-                questionId: parseInt(radio.dataset.questionId),
-                category: radio.dataset.category,
-                score: parseInt(radio.value),
-              });
-            });
+      fetch("/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ answers }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          const resultsDiv = document.getElementById("results");
+          const resultDetails = document.getElementById("result-details");
 
-          fetch("/submit", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ answers }),
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              const resultsDiv = document.getElementById("results");
-              const resultDetails = document.getElementById("result-details");
-
-              resultDetails.innerHTML = `
+          resultDetails.innerHTML = `
                     <div class="grid grid-cols-3 gap-4">
                         ${Object.entries(data.scores)
-                          .map(
-                            ([category, score]) => `
+              .map(
+                ([category, score]) => `
                             <div class="p-4 bg-white rounded shadow">
                                 <h3 class="font-bold capitalize">${category}</h3>
                                 <p>Score: ${score}</p>
                                 <p>Level: ${data.interpretation[category].level}</p>
                             </div>
                         `
-                          )
-                          .join("")}
+              )
+              .join("")}
                     </div>
                 `;
 
-              resultsDiv.classList.remove("hidden");
-            })
-            .catch((error) => {
-              console.error("Error:", error);
-              alert("An error occurred while submitting the test.");
-            });
+          resultsDiv.classList.remove("hidden");
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          alert("An error occurred while submitting the test.");
         });
-    </script>
-  </body>
-</html>
+    });
+</script>
+
+{% endblock content %}
+</div>

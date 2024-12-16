@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}DASS Assessment Results{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-white shadow-md rounded-lg p-8 max-w-2xl mx-auto">
+        {% if scores %}
+        <h1 class="text-3xl font-bold text-center">Your DASS-21 Assessment Results</h1>
+        <div class="text-center text-sm mb-6">
+            Test taken on: {{ scores[3] | dateformat("%A, %B %d, %Y %I:%M %p") }}
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="bg-blue-100 p-4 rounded-lg text-center">
+                <h2 class="text-xl font-semibold">Depression</h2>
+                <p class="text-2xl font-bold text-blue-600">{{ scores[0] }}</p>
+                <p class="text-sm">
+                    {% if scores[0] <= 4 %}Normal{% elif scores[0] <=9 %}Mild{% elif scores[0] <=13 %}Moderate{% elif
+                        scores[0] <=20 %}Severe{% else %}Extremely Severe{% endif %} </p>
+            </div>
+            <div class="bg-green-100 p-4 rounded-lg text-center">
+                <h2 class="text-xl font-semibold">Anxiety</h2>
+                <p class="text-2xl font-bold text-green-600">{{ scores[1] }}</p>
+                <p class="text-sm">
+                    {% if scores[1] <= 3 %}Normal{% elif scores[1] <=5 %}Mild{% elif scores[1] <=7 %}Moderate{% elif
+                        scores[1] <=10 %}Severe{% else %}Extremely Severe{% endif %} </p>
+            </div>
+            <div class="bg-red-100 p-4 rounded-lg text-center">
+                <h2 class="text-xl font-semibold">Stress</h2>
+                <p class="text-2xl font-bold text-red-600">{{ scores[2] }}</p>
+                <p class="text-sm">
+                    {% if scores[2] <= 7 %}Normal{% elif scores[2] <=9 %}Mild{% elif scores[2] <=12 %}Moderate{% elif
+                        scores[2] <=16 %}Severe{% else %}Extremely Severe{% endif %} </p>
+            </div>
+        </div>
+
+
+        <div class="bg-gray-50 p-4 rounded-lg">
+            <h3 class="text-xl font-semibold mb-4">Interpretation</h3>
+            <ul class="list-disc list-inside space-y-2">
+                <li>
+                    <strong>Depression ({{ scores[0] }}):</strong>
+                    {% if scores[0] <= 4 %}Normal level of depression symptoms.{% elif scores[0] <=9 %}Mild depression
+                        symptoms detected.{% elif scores[0] <=13 %}Moderate depression symptoms present.{% elif
+                        scores[0] <=20 %}Severe depression symptoms observed.{% else %}Extremely severe depression
+                        symptoms detected.{% endif %} </li>
+                <li>
+                    <strong>Anxiety ({{ scores[1] }}):</strong>
+                    {% if scores[1] <= 3 %}Normal level of anxiety symptoms.{% elif scores[1] <=5 %}Mild anxiety
+                        symptoms detected.{% elif scores[1] <=7 %}Moderate anxiety symptoms present.{% elif scores[1]
+                        <=10 %}Severe anxiety symptoms observed.{% else %}Extremely severe anxiety symptoms detected.{%
+                        endif %} </li>
+                <li>
+                    <strong>Stress ({{ scores[2] }}):</strong>
+                    {% if scores[2] <= 7 %}Normal level of stress symptoms.{% elif scores[2] <=9 %}Mild stress symptoms
+                        detected.{% elif scores[2] <=12 %}Moderate stress symptoms present.{% elif scores[2] <=16
+                        %}Severe stress symptoms observed.{% else %}Extremely severe stress symptoms detected.{% endif
+                        %} </li>
+            </ul>
+        </div>
+
+        <div class="mt-6 text-center">
+            <p class="text-sm text-gray-600">
+                Note: This is a screening tool. For a comprehensive assessment,
+                please consult a mental health professional.
+            </p>
+        </div>
+        {% else %}
+        <div class="text-center">
+            <h1 class="text-3xl font-bold mb-4">No Results Available</h1>
+            <p class="text-gray-600">Please complete the DASS-21 assessment first.</p>
+            <a href="/question/1"
+                class="mt-4 inline-block bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600">
+                Start Assessment
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
