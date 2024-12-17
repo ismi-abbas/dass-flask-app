@@ -40,8 +40,6 @@
     </div>
 
     <script>
-        localStorage.removeItem("questionResponses")
-
         document.addEventListener('DOMContentLoaded', function () {
             const form = document.getElementById('questionForm');
             const prevButton = document.getElementById('prevButton');
@@ -61,7 +59,7 @@
             if (!questionResponses) {
                 localStorage.setItem('questionResponses', JSON.stringify([]));
             }
-            const currentAnswer = questionResponses.find((response) => response.id === currentQuestionId);
+            const currentAnswer = questionResponses?.find((response) => response.id === currentQuestionId)
 
             if (currentAnswer) {
                 const selectedRadio = form.querySelector(`input[type="radio"][value="${currentAnswer.answer.toString()}"]`);

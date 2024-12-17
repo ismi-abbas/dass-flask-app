@@ -107,9 +107,6 @@ def results():
 @app.route("/submit", methods=["POST"])
 @login_required
 def submit_test():
-    if not session.get("user_id"):
-        return jsonify({"error": "Unauthorized"}), 401
-
     answers = request.json.get("answers", [])
 
     # Score calculation logic
@@ -122,12 +119,13 @@ def submit_test():
     try:
         conn = get_db_connection()
         conn.execute(
-            "INSERT INTO dass_score (user_id, depression_score, anxiety_score, stress_score) VALUES (?, ?, ?, ?)",
+            "INSERT INTO dass_score (user_id, depression_score, anxiety_score, stress_score, answer) VALUES (?, ?, ?, ?, ?)",
             (
                 session["user_id"],
                 scores["depression"],
                 scores["anxiety"],
                 scores["stress"],
+                str(answers),
             ),
         )
         conn.commit()
@@ -157,6 +155,7 @@ def login():
         if user and check_password_hash(user["password"], password):
             session["user_id"] = user["id"]
             session["username"] = user["username"]
+            session["role"] = "student"
 
             flash("Login successful!", "success")
             return redirect(url_for("index"))
@@ -514,7 +513,7 @@ def book_appointment():
 def calculate_category_score(answers, category):
     category_questions = [q for q in DASS_QUESTIONS if q["category"] == category]
     return sum(
-        answer["answer"]
+        answer["answer"] * 2
         for answer in answers
         if any(
             q["id"] == answer["id"] and q["category"] == category
@@ -775,7 +774,7 @@ def counsellor_dashboard():
             """
             SELECT COUNT(*) as count 
             FROM dass_score 
-            WHERE depression_score > 20 OR anxiety_score > 20 OR stress_score > 20
+            WHERE depression_score > 20 * 2 OR anxiety_score > 14 * 2 OR stress_score > 25 * 2
             """
         ).fetchone()["count"]
 
@@ -790,6 +789,33 @@ def counsellor_dashboard():
     except Exception as e:
         flash(f"Dashboard error: {str(e)}", "error")
         return redirect(url_for("index"))
+
+
+@app.route("/assessments")
+@counsellor_login_required
+def assessments():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Fetch all all_assessments for the current user, ordered by date descending
+        cursor.execute("""
+            SELECT ds.id, user_id, depression_score, anxiety_score, stress_score, date_taken, s.username
+            FROM dass_score ds
+            JOIN students s ON ds.user_id = s.id
+            ORDER BY date_taken DESC
+        """)
+
+        all_assessments = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        return render_template("assessment.html", all_assessments=all_assessments)
+
+    except Exception as e:
+        print({str(e)})
+        flash(f"Error retrieving assessment history: {str(e)}", "error")
+        return redirect(url_for("counsellor_dashboard"))
 
 
 init_db()
