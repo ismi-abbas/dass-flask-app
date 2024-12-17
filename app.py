@@ -152,6 +152,10 @@ def login():
             "SELECT * FROM students WHERE email = ?", (email,)
         ).fetchone()
         conn.close()
+
+        if not user:
+            flash("User with that email does not exist", "error")
+            return redirect(url_for("login"))
         if user and check_password_hash(user["password"], password):
             session["user_id"] = user["id"]
             session["username"] = user["username"]
@@ -169,6 +173,12 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
+
+@app.route("/counsellor/logout")
+def counsellor_logout():
+    session.clear()
+    return redirect(url_for("counsellor_login"))
 
 
 @app.route("/user/settings")
@@ -481,8 +491,8 @@ def book_appointment():
             cursor.execute(
                 """
                 INSERT INTO appointments 
-                (student_id, date, time, reason, status) 
-                VALUES (?, ?, ?, ?, ?)
+                (student_id, date, time, reason, status, counsellor_id) 
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (
                     session["user_id"],
@@ -490,6 +500,7 @@ def book_appointment():
                     data.get("time"),
                     data.get("reason", "General Counselling"),
                     "pending",
+                    data.get("counsellor_id"),
                 ),
             )
 
