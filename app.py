@@ -1,4 +1,3 @@
-from re import S
 from flask import (
     Flask,
     render_template,
@@ -27,6 +26,27 @@ Session(app)
 app.secret_key = "NYWFcxLeXCONcvuSJDKdPtnzojIRn8WeZoI2h+VnsKw="
 
 
+# Decorator for counsellor-only routes
+def login_required(f):
+    @functools.wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get("user_id"):
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def counsellor_login_required(f):
+    @functools.wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get("user_id") or session.get("role") != "counsellor":
+            return redirect(url_for("counsellor_login"))
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
 def dateformat(value, format="%Y-%m-%d"):
     if isinstance(value, str):
         try:
@@ -40,13 +60,11 @@ def dateformat(value, format="%Y-%m-%d"):
     return value
 
 
-app.jinja_env.filters["dateformat"] = dateformat
-
-
 def get_current_datetime():
     return datetime.now()
 
 
+app.jinja_env.filters["dateformat"] = dateformat
 app.jinja_env.globals["now"] = get_current_datetime
 app.jinja_env.globals["timedelta"] = timedelta
 
@@ -57,6 +75,7 @@ def index():
 
 
 @app.route("/question/<question_id>")
+@login_required
 def question(question_id):
     question = next((q for q in DASS_QUESTIONS if q["id"] == int(question_id)), None)
     return render_template(
@@ -65,6 +84,7 @@ def question(question_id):
 
 
 @app.route("/results")
+@login_required
 def results():
     if not session.get("user_id"):
         return redirect(url_for("login"))
@@ -72,7 +92,7 @@ def results():
     try:
         conn = get_db_connection()
         scores = conn.execute(
-            "SELECT depression_score, anxiety_score, stress_score, date_taken FROM dass_score WHERE user_id = ?",
+            "SELECT depression_score, anxiety_score, stress_score, date_taken, answer FROM dass_score WHERE user_id = ?",
             (session["user_id"],),
         ).fetchone()
         conn.close()
@@ -85,6 +105,7 @@ def results():
 
 
 @app.route("/submit", methods=["POST"])
+@login_required
 def submit_test():
     if not session.get("user_id"):
         return jsonify({"error": "Unauthorized"}), 401
@@ -152,13 +173,9 @@ def logout():
 
 
 @app.route("/user/settings")
+@login_required
 def settings():
     return render_template("settings.html")
-
-
-@app.route("/counsellor/dashboard")
-def dashboard():
-    return render_template("dashboard.html")
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -206,15 +223,23 @@ def register():
 
 
 @app.route("/get_user_info")
+@login_required
 def get_user_info():
     if not session.get("user_id"):
         return jsonify({"error": "Not logged in"}), 401
 
     try:
         conn = get_db_connection()
-        user = conn.execute(
-            "SELECT username, email FROM students WHERE id = ?", (session["user_id"],)
-        ).fetchone()
+        if session["role"] == "counsellor":
+            user = conn.execute(
+                "SELECT username, email FROM counsellors WHERE id = ?",
+                (session["user_id"],),
+            ).fetchone()
+        else:
+            user = conn.execute(
+                "SELECT username, email FROM students WHERE id = ?",
+                (session["user_id"],),
+            ).fetchone()
         conn.close()
 
         return jsonify(
@@ -229,6 +254,7 @@ def get_user_info():
 
 
 @app.route("/update_user_settings", methods=["POST"])
+@login_required
 def update_user_settings():
     if not session.get("user_id"):
         return jsonify({"success": False, "message": "Not logged in"}), 401
@@ -238,6 +264,26 @@ def update_user_settings():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        if session["role"] == "counsellor":
+            # Update username and email
+            cursor.execute(
+                "UPDATE counsellors SET username = ?, email = ? WHERE id = ?",
+                (data["username"], data["email"], session["user_id"]),
+            )
+
+            # Update password if provided
+            if "password" in data and data["password"]:
+                hashed_password = generate_password_hash(data["password"])
+                cursor.execute(
+                    "UPDATE counsellors SET password = ? WHERE id = ?",
+                    (hashed_password, session["user_id"]),
+                )
+
+            conn.commit()
+            conn.close()
+
+            return jsonify({"success": True})
 
         # Update username and email
         cursor.execute(
@@ -262,6 +308,7 @@ def update_user_settings():
 
 
 @app.route("/delete_account", methods=["POST"])
+@login_required
 def delete_account():
     if not session.get("user_id"):
         return jsonify({"success": False, "message": "Not logged in"}), 401
@@ -288,6 +335,7 @@ def delete_account():
 
 
 @app.route("/counsellor/stats")
+@counsellor_login_required
 def counsellor_stats():
     if not session.get("user_id"):
         return jsonify({"error": "Not logged in"}), 401
@@ -332,6 +380,7 @@ def counsellor_stats():
 
 
 @app.route("/counsellor/recent_assessments")
+@counsellor_login_required
 def recent_assessments():
     if not session.get("user_id"):
         return jsonify({"error": "Not logged in"}), 401
@@ -365,6 +414,7 @@ def recent_assessments():
 
 
 @app.route("/counsellor/upcoming_appointments")
+@counsellor_login_required
 def upcoming_appointments():
     if not session.get("user_id"):
         return jsonify({"error": "Not logged in"}), 401
@@ -399,6 +449,7 @@ def upcoming_appointments():
 
 
 @app.route("/book_appointment", methods=["GET", "POST"])
+@login_required
 def book_appointment():
     if not session.get("user_id"):
         return redirect(url_for("login"))
@@ -454,7 +505,10 @@ def book_appointment():
             return jsonify({"success": False, "message": str(e)}), 500
 
     # GET request - render booking page
-    return render_template("book_appointment.html")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cousellors = cursor.execute("SELECT * FROM counsellors")
+    return render_template("book_appointment.html", counsellors=cousellors)
 
 
 def calculate_category_score(answers, category):
@@ -502,28 +556,6 @@ def interpret_scores(scores):
                 break
 
     return result
-
-
-# Decorator for counsellor-only routes
-def counsellor_required(f):
-    @functools.wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get("user_id"):
-            return redirect(url_for("login"))
-
-        conn = get_db_connection()
-        user = conn.execute(
-            "SELECT role FROM students WHERE id = ?", (session["user_id"],)
-        ).fetchone()
-        conn.close()
-
-        if not user or user["role"] != "counsellor":
-            flash("Access denied. Counsellor privileges required.", "error")
-            return redirect(url_for("index"))
-
-        return f(*args, **kwargs)
-
-    return decorated_function
 
 
 @app.route("/counsellor/register", methods=["GET", "POST"])
@@ -584,11 +616,11 @@ def counsellor_register():
 
 
 @app.route("/counsellor/appointments")
+@counsellor_login_required
 def manage_appointments():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-
         # Fetch appointments with student details
         appointments = cursor.execute(
             """
@@ -609,11 +641,13 @@ def manage_appointments():
 
         return render_template("manage_appointments.html", appointments=appointments)
     except Exception as e:
+        print(e)
         flash(f"Error fetching appointments: {str(e)}", "error")
         return redirect(url_for("index"))
 
 
 @app.route("/counsellor/update_appointment/<int:appointment_id>", methods=["POST"])
+@counsellor_login_required
 def update_appointment(appointment_id):
     status = request.form.get("status")
 
@@ -636,7 +670,7 @@ def update_appointment(appointment_id):
 
 
 @app.route("/counsellor/appointments")
-@counsellor_required
+@counsellor_login_required
 def counsellor_appointments():
     try:
         conn = get_db_connection()
@@ -663,7 +697,7 @@ def counsellor_appointments():
 
 
 @app.route("/counsellor/update_appointment/<int:appointment_id>", methods=["POST"])
-@counsellor_required
+@counsellor_login_required
 def counsellor_update_appointment(appointment_id):
     status = request.form.get("status")
 
@@ -696,23 +730,13 @@ def counsellor_login():
             counsellor = cursor.execute(
                 "SELECT * FROM counsellors WHERE email = ?", (email,)
             ).fetchone()
+            conn.close()
 
             if counsellor and check_password_hash(counsellor["password"], password):
-                # Create a user object compatible with Flask-Login
-                class CounsellorUser:
-                    def __init__(self, counsellor):
-                        self.id = counsellor["id"]
-                        self.username = counsellor["username"]
-                        self.email = counsellor["email"]
-                        self.is_authenticated = True
-                        self.is_active = True
-                        self.is_anonymous = False
-
-                    def get_id(self):
-                        return str(self.id)
-
-                user = CounsellorUser(counsellor)
-                login_user(user)
+                # Set session for counsellor
+                session["user_id"] = counsellor["id"]
+                session["username"] = counsellor["username"]
+                session["role"] = "counsellor"
 
                 flash("Counsellor login successful!", "success")
                 return redirect(url_for("counsellor_dashboard"))
@@ -728,7 +752,7 @@ def counsellor_login():
 
 
 @app.route("/counsellor/dashboard")
-@counsellor_required
+# @counsellor_login_required
 def counsellor_dashboard():
     try:
         conn = get_db_connection()

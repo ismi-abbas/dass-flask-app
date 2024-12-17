@@ -1,137 +1,139 @@
 {% extends "base.html" %} {% block title %} Question {% endblock title %}
 
 {% block content %}
-<div
-    class="flex flex-col items-center justify-between py-10 bg-white border-2 rounded-xl max-w-2xl w-full min-h-[450px]">
-    <div>
-        <h2 class="text-xl font-semibold text-center">Question {{ question.id }} of {{ DASS_QUESTIONS | length }}</h2>
-        <div class="text-sm text-gray-600 mt-2">Please rate how much the following statements applied to you over the
-            past week.
+    <div class="flex flex-col items-center justify-between py-10 bg-white border-2 rounded-xl max-w-2xl w-full min-h-[450px]">
+        <div>
+            <h2 class="text-xl font-semibold text-center">Question {{ question.id }}
+                of {{ DASS_QUESTIONS | length }}</h2>
+            <div class="text-sm text-gray-600 mt-2">Please rate how much the following statements applied to you over
+                the
+                past week.
+            </div>
         </div>
-    </div>
 
-    <p class="text-xl font-semibold text-center max-w-lg">{{ question.text }}</p>
-    <form id="questionForm" class="flex flex-col w-full max-w-lg">
-        {% for i in range(4) %}
-        <label class="flex items-center space-x-2">
-            <input type="radio" name="question_{{ question.id }}" value="{{ i }}" class="form-radio"
-                data-question-id="{{ question.id }}" data-category="{{ question.category }}" required
-                style="width: 18px; height: 18px;" />
-            <span class="text-lg">
-                {{[
+        <p class="text-xl font-semibold text-center max-w-lg">{{ question.text }}</p>
+        <form id="questionForm" class="flex flex-col w-full max-w-lg">
+            {% for i in range(4) %}
+                <label class="flex items-center space-x-2">
+                    <input type="radio" name="question_{{ question.id }}" value="{{ i }}" class="form-radio"
+                           data-question-id="{{ question.id }}" data-category="{{ question.category }}" required
+                           style="width: 18px; height: 18px;"/>
+                    <span class="text-lg">
+                {{ [
                 'Did not apply to me at all',
                 'Applied to me to some degree',
                 'Applied to me to a considerable degree',
-                'Applied to me very much'][i]
-                }}
+                'Applied to me very much'][i] }}
             </span>
-        </label>
-        {% endfor %}
-        <div class="flex justify-between mt-5">
-            <button type="button" id="prevButton" class="bg-black hover:bg-gray-600 text-white py-2 px-4 rounded-md">
-                Previous
-            </button>
-            <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md">
-                Next
-            </button>
-        </div>
-    </form>
-</div>
+                </label>
+            {% endfor %}
+            <div class="flex justify-between mt-5">
+                <button type="button" id="prevButton"
+                        class="bg-black hover:bg-gray-600 text-white py-2 px-4 rounded-md">
+                    Previous
+                </button>
+                <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md">
+                    Next
+                </button>
+            </div>
+        </form>
+    </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const form = document.getElementById('questionForm');
-        const prevButton = document.getElementById('prevButton');
-        const nextButton = document.querySelector('button[type="submit"]');
+    <script>
+        localStorage.removeItem("questionResponses")
 
-        const totalQuestions = {{ DASS_QUESTIONS | length
-    }};
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('questionForm');
+            const prevButton = document.getElementById('prevButton');
+            const nextButton = document.querySelector('button[type="submit"]');
 
-    const currentQuestionId = {{ question.id }};
+            const totalQuestions = {{ DASS_QUESTIONS | length }};
 
-    // Disable previous button on first question
-    if (currentQuestionId === 1) {
-        prevButton.disabled = true;
-        prevButton.classList.add('opacity-50', 'cursor-not-allowed');
-    }
+            const currentQuestionId = {{ question.id }};
 
-    const questionResponses = JSON.parse(localStorage.getItem('questionResponses'));
-    if (!questionResponses) {
-        localStorage.setItem('questionResponses', JSON.stringify([]));
-    }
-    const currentAnswer = questionResponses.find((response) => response.id === currentQuestionId);
+            // Disable previous button on first question
+            if (currentQuestionId === 1) {
+                prevButton.disabled = true;
+                prevButton.classList.add('opacity-50', 'cursor-not-allowed');
+            }
 
-    if (currentAnswer) {
-        const selectedRadio = form.querySelector(`input[type="radio"][value="${currentAnswer.answer.toString()}"]`);
-        selectedRadio.checked = true;
-    }
+            const questionResponses = JSON.parse(localStorage.getItem('questionResponses'));
+            if (!questionResponses) {
+                localStorage.setItem('questionResponses', JSON.stringify([]));
+            }
+            const currentAnswer = questionResponses.find((response) => response.id === currentQuestionId);
+
+            if (currentAnswer) {
+                const selectedRadio = form.querySelector(`input[type="radio"][value="${currentAnswer.answer.toString()}"]`);
+                selectedRadio.checked = true;
+            }
 
 
-    const radioButton = form.querySelector('input[type="radio"]');
+            const radioButton = form.querySelector('input[type="radio"]');
 
-    form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        const selectedRadio = form.querySelector('input[type="radio"]:checked');
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const selectedRadio = form.querySelector('input[type="radio"]:checked');
 
-        // Get question details from selected radio
-        const questionId = selectedRadio.getAttribute('data-question-id');
-        const questionCategory = selectedRadio.getAttribute('data-category');
-        const answer = selectedRadio.value;
+                // Get question details from selected radio
+                const questionId = selectedRadio.getAttribute('data-question-id');
+                const questionCategory = selectedRadio.getAttribute('data-category');
+                const answer = selectedRadio.value;
 
-        // Save to localStorage
-        const questionResponses = JSON.parse(localStorage.getItem('questionResponses') || '[]');
-        // find first the overwrite if same id
-        const existingResponse = questionResponses.find((response) => response.id === parseInt(questionId));
-        if (existingResponse) {
-            existingResponse.answer = parseInt(answer);
-            existingResponse.category = questionCategory;
-        } else {
-            questionResponses.push({
-                id: parseInt(questionId),
-                category: questionCategory,
-                answer: parseInt(answer),
-            });
-        }
-
-        localStorage.setItem('questionResponses', JSON.stringify(questionResponses));
-
-        // Determine next question ID 
-        const nextQuestionId = parseInt(questionId) + 1;
-
-        // Redirect to next question or final page
-        if (nextQuestionId <= totalQuestions) {
-            window.location.href = `/question/${nextQuestionId}`;
-        } else {
-            // Redirect to results page when all questions are answered
-            // Submit the form to the server
-            const response = fetch('/submit', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    answers: questionResponses
-                })
-            }).then(response => {
-                if (response.ok) {
-                    localStorage.removeItem('questionResponses');
-                    return response.json();
+                // Save to localStorage
+                const questionResponses = JSON.parse(localStorage.getItem('questionResponses') || '[]');
+                // find first the overwrite if same id
+                const existingResponse = questionResponses.find((response) => response.id === parseInt(questionId));
+                if (existingResponse) {
+                    existingResponse.answer = parseInt(answer);
+                    existingResponse.category = questionCategory;
                 } else {
-                    throw new Error('Network response was not ok');
+                    questionResponses.push({
+                        id: parseInt(questionId),
+                        category: questionCategory,
+                        answer: parseInt(answer),
+                    });
                 }
-            })
 
-            window.location.href = '/results';
-        }
-    });
+                localStorage.setItem('questionResponses', JSON.stringify(questionResponses));
 
-    prevButton.addEventListener('click', function () {
-        const prevQuestionId = currentQuestionId - 1;
-        if (prevQuestionId >= 1) {
-            window.location.href = `/question/${prevQuestionId}`;
-        }
-    });
+                // Determine next question ID
+                const nextQuestionId = parseInt(questionId) + 1;
 
-});
-</script>
+                // Redirect to next question or final page
+                if (nextQuestionId <= totalQuestions) {
+                    window.location.href = `/question/${nextQuestionId}`;
+                } else {
+                    // Redirect to results page when all questions are answered
+                    // Submit the form to the server
+                    const response = fetch('/submit', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            answers: questionResponses
+                        })
+                    }).then(response => {
+                        if (response.ok) {
+                            localStorage.removeItem('questionResponses');
+                            return response.json();
+                        } else {
+                            throw new Error('Network response was not ok');
+                        }
+                    })
+
+                    window.location.href = '/results';
+                }
+            });
+
+            prevButton.addEventListener('click', function () {
+                const prevQuestionId = currentQuestionId - 1;
+                if (prevQuestionId >= 1) {
+                    window.location.href = `/question/${prevQuestionId}`;
+                }
+            });
+
+        });
+    </script>
 {% endblock content %}
