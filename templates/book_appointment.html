@@ -58,7 +58,7 @@
                         <option value="">Select Counsellor</option>
                         {% for counsellor in counsellors %}
                             <option value="{{ counsellor.id }}">
-                                {{ counsellor.username | capitalize }}
+                                {{ counsellor.username }}
                             </option>
                         {% endfor %}
                     </select>

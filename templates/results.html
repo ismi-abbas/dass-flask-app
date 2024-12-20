@@ -1,101 +1,137 @@
-{% extends "base.html" %} {% block title %}DASS Assessment Results{% endblock %}
+{% extends "base.html" %}
+{% block title %}DASS Assessment Results{% endblock %}
 {% block content %}
-    <div class="container mx-auto px-4 py-8">
-        <div class="bg-white shadow-md rounded-lg p-8 max-w-2xl mx-auto">
+<div class="py-12">
+    <div class="container mx-auto px-4">
+        <div class="bg-white shadow-xl rounded-2xl p-8 max-w-4xl mx-auto">
             {% if scores %}
-                <h1 class="text-3xl font-bold text-center">
+                <h1 class="text-4xl font-bold text-gray-800 text-center mb-8">
                     Your DASS-21 Assessment Results
                 </h1>
-                <div class="text-center text-sm mb-6">
-                    Test taken on: {{ scores[3] | dateformat("%A, %B %d, %Y %I:%M %p") }}
-                </div>
 
-                <div class="grid grid-cols-3 gap-4 mb-6">
-                    <div class="bg-blue-100 p-4 rounded-lg text-center">
-                        <h2 class="text-xl font-semibold">Depression</h2>
-                        <p class="text-2xl font-bold text-blue-600">{{ scores[0] }}</p>
-                        <p class="text-sm">
-                            {% if scores[0] <= 9 %} Normal {% elif scores[0] <=13 %} Mild {% elif scores[0] <=20 %}
-                                Moderate {% elif scores[0] <=27 %} Severe {% else %}
-                                Extremely Severe {% endif %}
-                        </p>
-                    </div>
-                    <div class="bg-green-100 p-4 rounded-lg text-center">
-                        <h2 class="text-xl font-semibold">Anxiety</h2>
-                        <p class="text-2xl font-bold text-green-600">{{ scores[1] }}</p>
-                        <p class="text-sm">
-                            {% if scores[1] <= 7 %} Normal {% elif scores[1] <=9 %} Mild {% elif scores[1] <=14 %}
-                                Moderate {% elif scores[1] <=19 %} Severe {% else %}
-                                Extremely Severe {% endif %}
-                        </p>
-                    </div>
-                    <div class="bg-red-100 p-4 rounded-lg text-center">
-                        <h2 class="text-xl font-semibold">Stress</h2>
-                        <p class="text-2xl font-bold text-red-600">{{ scores[2] }}</p>
-                        <p class="text-sm">
-                            {% if scores[2] <= 14 %} Normal {% elif scores[2] <=18 %} Mild {% elif scores[2] <=25 %}
-                                Moderate {% elif scores[2] <=33 %} Severe {% else %}
-                                Extremely Severe {% endif %}
-                        </p>
-                    </div>
-                </div>
+                {% for score in scores %}
+                    {% if loop.first %}
+                    <!-- Latest Result -->
+                    <div class="mb-8">
+                        <div class="text-center text-gray-600 mb-4">
+                            Latest assessment: {{ score[3] | convert_timezone | dateformat("%A, %B %d, %Y %I:%M %p") }}
+                        </div>
 
-                <div class="bg-gray-50 p-4 rounded-lg">
-                    <h3 class="text-xl font-semibold mb-4">Interpretation</h3>
-                    <ul class="list-disc list-inside space-y-2">
-                        <li>
-                            <strong>Depression ({{ scores[0] }}):</strong>
-                            {% if scores[0] <= 9 %} Normal level of depression symptoms. {% elif scores[0] <=13 %} Mild
-                                depression symptoms detected. {% elif scores[0]
-          <=20 %} Moderate depression symptoms present. {% elif scores[0] <=27 %} Severe depression symptoms
-                                observed. {% else %} Extremely severe
-                                depression symptoms detected. {% endif %}
-                        </li>
-                        <li>
-                            <strong>Anxiety ({{ scores[1] }}):</strong>
-                            {% if scores[1] <= 7 %} Normal level of anxiety symptoms. {% elif scores[1] <=9 %} Mild
-                                anxiety symptoms detected. {% elif scores[1]
-          <=14 %} Moderate anxiety symptoms present. {% elif scores[1] <=19 %}
-                                Severe anxiety symptoms observed. {% else %} Extremely severe anxiety
-                                symptoms detected. {% endif %}
-                        </li>
-                        <li>
-                            <strong>Stress ({{ scores[2] }}):</strong>
-                            {% if scores[2] <= 14 %} Normal level of stress symptoms. {% elif scores[2] <=18 %} Mild
-                                stress symptoms detected. {% elif scores[2]
-          <=25 %} Moderate stress symptoms present. {% elif scores[2] <=33 %}
-                                Severe stress symptoms observed. {% else %}Extremely severe stress
-                                symptoms detected. {% endif %}
-                        </li>
-                    </ul>
-                </div>
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl text-center">
+                                <h2 class="text-xl font-bold text-blue-800">Depression</h2>
+                                <p class="text-3xl font-bold text-blue-600">{{ score[0] // 2 }}</p>
+                                <p class="text-sm text-blue-700 font-medium">
+                                    {% if score[0] <= 9 %}Normal
+                                    {% elif score[0] <=13 %}Mild
+                                    {% elif score[0] <=20 %}Moderate
+                                    {% elif score[0] <=27 %}Severe
+                                    {% else %}Extremely Severe{% endif %}
+                                </p>
+                            </div>
+                            <div class="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-xl text-center">
+                                <h2 class="text-xl font-bold text-emerald-800">Anxiety</h2>
+                                <p class="text-3xl font-bold text-emerald-600">{{ score[1] // 2 }}</p>
+                                <p class="text-sm text-emerald-700 font-medium">
+                                    {% if score[1] <= 7 %}Normal
+                                    {% elif score[1] <=9 %}Mild
+                                    {% elif score[1] <=14 %}Moderate
+                                    {% elif score[1] <=19 %}Severe
+                                    {% else %}Extremely Severe{% endif %}
+                                </p>
+                            </div>
+                            <div class="bg-gradient-to-br from-rose-50 to-rose-100 p-4 rounded-xl text-center">
+                                <h2 class="text-xl font-bold text-rose-800">Stress</h2>
+                                <p class="text-3xl font-bold text-rose-600">{{ score[2] // 2 }}</p>
+                                <p class="text-sm text-rose-700 font-medium">
+                                    {% if score[2] <= 14 %}Normal
+                                    {% elif score[2] <=18 %}Mild
+                                    {% elif score[2] <=25 %}Moderate
+                                    {% elif score[2] <=33 %}Severe
+                                    {% else %}Extremely Severe{% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
 
-                <div class="mt-6 text-center">
-                    <p class="text-sm text-gray-600">
-                        Note: This is a screening tool. For a comprehensive assessment, please
-                        consult a mental health professional.
+                    <!-- Collapsible Previous Results -->
+                    <div class="border-t border-gray-200 py-2">
+                        <details class="group" {% if loop.first %}open{% endif %}>
+                            <summary class="flex justify-between items-center cursor-pointer">
+                                <span class="font-medium text-gray-700">
+                                    {{ score[3] | convert_timezone | dateformat("%B %d, %Y %I:%M %p") }}
+                                </span>
+                                <span class="transform group-open:rotate-180 transition-transform">
+                                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </span>
+                            </summary>
+                            <div class="mt-4 pl-4">
+                                <div class="grid grid-cols-3 gap-4 text-sm">
+                                    <div>
+                                        <span class="text-blue-800 font-medium">Depression:</span>
+                                        <span class="ml-1">{{ score[0] // 2 }}</span>
+                                        <span class="block text-gray-600">
+                                            {% if score[0] <= 9 %}Normal
+                                            {% elif score[0] <=13 %}Mild
+                                            {% elif score[0] <=20 %}Moderate
+                                            {% elif score[0] <=27 %}Severe
+                                            {% else %}Extremely Severe{% endif %}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="text-emerald-800 font-medium">Anxiety:</span>
+                                        <span class="ml-1">{{ score[1] // 2 }}</span>
+                                        <span class="block text-gray-600">
+                                            {% if score[1] <= 7 %}Normal
+                                            {% elif score[1] <=9 %}Mild
+                                            {% elif score[1] <=14 %}Moderate
+                                            {% elif score[1] <=19 %}Severe
+                                            {% else %}Extremely Severe{% endif %}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="text-rose-800 font-medium">Stress:</span>
+                                        <span class="ml-1">{{ score[2] // 2 }}</span>
+                                        <span class="block text-gray-600">
+                                            {% if score[2] <= 14 %}Normal
+                                            {% elif score[2] <=18 %}Mild
+                                            {% elif score[2] <=25 %}Moderate
+                                            {% elif score[2] <=33 %}Severe
+                                            {% else %}Extremely Severe{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                {% endfor %}
+
+                <div class="mt-8 text-center">
+                    <p class="text-gray-600 text-sm italic">
+                        Note: This is a screening tool. For a comprehensive assessment, please consult a mental health professional.
                     </p>
                 </div>
 
-                <div class="flex justify-center">
-                    <a
-                            href="/book_appointment"
-                            class="mt-6 inline-block bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600"
-                    >Book Appointment</a
-                    >
+                <div class="flex justify-center mt-6">
+                    <a href="/book_appointment"
+                       class="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-2 px-6 rounded-full font-semibold shadow-lg hover:from-blue-700 hover:to-blue-800 transform transition-all hover:scale-105 duration-300">
+                        Book an Appointment
+                    </a>
                 </div>
             {% else %}
-                <div class="text-center">
-                    <h1 class="text-3xl font-bold mb-4">No Results Available</h1>
-                    <p class="text-gray-600">Please complete the DASS-21 assessment first.</p>
-                    <a
-                            href="/question/1"
-                            class="mt-4 inline-block bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600"
-                    >
+                <div class="text-center py-12">
+                    <h1 class="text-4xl font-bold text-gray-800 mb-6">No Results Available</h1>
+                    <p class="text-gray-600 mb-8">Please complete the DASS-21 assessment first.</p>
+                    <a href="/question/1"
+                       class="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-8 rounded-full font-semibold shadow-lg hover:from-blue-700 hover:to-blue-800 transform transition-all hover:scale-105 duration-300">
                         Start Assessment
                     </a>
                 </div>
             {% endif %}
         </div>
     </div>
+</div>
 {% endblock %}

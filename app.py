@@ -68,6 +68,15 @@ app.jinja_env.filters["dateformat"] = dateformat
 app.jinja_env.globals["now"] = get_current_datetime
 app.jinja_env.globals["timedelta"] = timedelta
 
+# Add custom template filter for timezone conversion
+@app.template_filter('convert_timezone')
+def convert_timezone(date_str):
+    if isinstance(date_str, str):
+        dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+    else:
+        dt = date_str
+    return dt + timedelta(hours=8)
+
 
 @app.route("/")
 def index():
@@ -92,9 +101,9 @@ def results():
     try:
         conn = get_db_connection()
         scores = conn.execute(
-            "SELECT depression_score, anxiety_score, stress_score, date_taken, answer FROM dass_score WHERE user_id = ?",
+            "SELECT depression_score, anxiety_score, stress_score, date_taken, answer FROM dass_score WHERE user_id = ? ORDER BY date_taken DESC",
             (session["user_id"],),
-        ).fetchone()
+        ).fetchall()
         conn.close()
     except sqlite3.IntegrityError:
         scores = None
