@@ -3,30 +3,30 @@
 {% block title %}Counsellor Dashboard{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-16">
-    <div class="bg-white shadow-md rounded-lg p-8">
-        <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Counsellor Dashboard</h1>
+    <div class="container mx-auto px-4 py-16">
+        <div class="bg-white shadow-md rounded-lg p-8">
+            <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">Counsellor Dashboard</h1>
 
-        <div class="grid md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-blue-100 p-6 rounded-lg">
-                <h2 class="text-xl font-semibold mb-4">Total Students</h2>
-                <p id="totalStudents" class="text-3xl font-bold text-blue-600">-</p>
+            <div class="grid md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-blue-100 p-6 rounded-lg">
+                    <h2 class="text-xl font-semibold mb-4">Total Students</h2>
+                    <p id="totalStudents" class="text-3xl font-bold text-blue-600">-</p>
+                </div>
+                <div class="bg-green-100 p-6 rounded-lg">
+                    <h2 class="text-xl font-semibold mb-4">Assessments This Month</h2>
+                    <p id="monthlyAssessments" class="text-3xl font-bold text-green-600">-</p>
+                </div>
+                <div class="bg-red-100 p-6 rounded-lg">
+                    <h2 class="text-xl font-semibold mb-4">High-Risk Students</h2>
+                    <p id="highRiskStudents" class="text-3xl font-bold text-red-600">-</p>
+                </div>
             </div>
-            <div class="bg-green-100 p-6 rounded-lg">
-                <h2 class="text-xl font-semibold mb-4">Assessments This Month</h2>
-                <p id="monthlyAssessments" class="text-3xl font-bold text-green-600">-</p>
-            </div>
-            <div class="bg-red-100 p-6 rounded-lg">
-                <h2 class="text-xl font-semibold mb-4">High-Risk Students</h2>
-                <p id="highRiskStudents" class="text-3xl font-bold text-red-600">-</p>
-            </div>
-        </div>
 
-        <div class="mb-8">
-            <h2 class="text-2xl font-semibold mb-4">Recent Assessments</h2>
-            <div class="overflow-x-auto">
-                <table id="assessmentsTable" class="w-full bg-white shadow-md rounded-lg overflow-hidden">
-                    <thead class="bg-gray-100">
+            <div class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Recent Assessments</h2>
+                <div class="overflow-x-auto">
+                    <table id="assessmentsTable" class="w-full bg-white shadow-md rounded-lg overflow-hidden">
+                        <thead class="bg-gray-100">
                         <tr>
                             <th class="px-4 py-3 text-left">Student</th>
                             <th class="px-4 py-3 text-left">Date</th>
@@ -35,19 +35,19 @@
                             <th class="px-4 py-3 text-center">Stress</th>
                             <th class="px-4 py-3 text-center">Actions</th>
                         </tr>
-                    </thead>
-                    <tbody id="assessmentsTableBody">
+                        </thead>
+                        <tbody id="assessmentsTableBody">
                         <!-- Dynamically populated -->
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
 
-        <div>
-            <h2 class="text-2xl font-semibold mb-4">Upcoming Appointments</h2>
-            <div class="overflow-x-auto">
-                <table id="appointmentsTable" class="w-full bg-white shadow-md rounded-lg overflow-hidden">
-                    <thead class="bg-gray-100">
+            <div>
+                <h2 class="text-2xl font-semibold mb-4">Upcoming Appointments</h2>
+                <div class="overflow-x-auto">
+                    <table id="appointmentsTable" class="w-full bg-white shadow-md rounded-lg overflow-hidden">
+                        <thead class="bg-gray-100">
                         <tr>
                             <th class="px-4 py-3 text-left">Student</th>
                             <th class="px-4 py-3 text-left">Date</th>
@@ -55,34 +55,34 @@
                             <th class="px-4 py-3 text-left">Status</th>
                             <th class="px-4 py-3 text-center">Actions</th>
                         </tr>
-                    </thead>
-                    <tbody id="appointmentsTableBody">
+                        </thead>
+                        <tbody id="appointmentsTableBody">
                         <!-- Dynamically populated -->
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Fetch dashboard statistics
-        fetch('/counsellor/stats')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('totalStudents').textContent = data.totalStudents;
-                document.getElementById('monthlyAssessments').textContent = data.monthlyAssessments;
-                document.getElementById('highRiskStudents').textContent = data.highRiskStudents;
-            });
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Fetch dashboard statistics
+            fetch('/counsellor/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('totalStudents').textContent = data.totalStudents;
+                    document.getElementById('monthlyAssessments').textContent = data.monthlyAssessments;
+                    document.getElementById('highRiskStudents').textContent = data.highRiskStudents;
+                });
 
-        // Fetch recent assessments
-        fetch('/counsellor/recent_assessments')
-            .then(response => response.json())
-            .then(data => {
-                const tableBody = document.getElementById('assessmentsTableBody');
-                data.forEach(assessment => {
-                    const row = `
+            // Fetch recent assessments
+            fetch('/counsellor/recent_assessments')
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById('assessmentsTableBody');
+                    data.forEach(assessment => {
+                        const row = `
                     <tr class="border-b">
                         <td class="px-4 py-3">${assessment.student_name}</td>
                         <td class="px-4 py-3">${assessment.date}</td>
@@ -94,17 +94,17 @@
                         </td>
                     </tr>
                 `;
-                    tableBody.innerHTML += row;
+                        tableBody.innerHTML += row;
+                    });
                 });
-            });
 
-        // Fetch upcoming appointments
-        fetch('/counsellor/upcoming_appointments')
-            .then(response => response.json())
-            .then(data => {
-                const tableBody = document.getElementById('appointmentsTableBody');
-                data.forEach(appointment => {
-                    const row = `
+            // Fetch upcoming appointments
+            fetch('/counsellor/upcoming_appointments')
+                .then(response => response.json())
+                .then(data => {
+                    const tableBody = document.getElementById('appointmentsTableBody');
+                    data.forEach(appointment => {
+                        const row = `
                     <tr class="border-b">
                         <td class="px-4 py-3">${appointment.student_name}</td>
                         <td class="px-4 py-3">${appointment.date}</td>
@@ -119,52 +119,56 @@
                         </td>
                     </tr>
                 `;
-                    tableBody.innerHTML += row;
+                        tableBody.innerHTML += row;
+                    });
                 });
-            });
 
-        // Helper functions
-        function getSeverityClass(score, category) {
-            if (category === 'depression') {
-                if (score <= 4) return 'text-green-600';
-                if (score <= 9) return 'text-yellow-600';
-                if (score <= 13) return 'text-orange-600';
-                if (score <= 20) return 'text-red-600';
-                return 'text-red-800 font-bold';
+            // Helper functions
+            function getSeverityClass(score, category) {
+                if (category === 'depression') {
+                    if (score <= 4) return 'text-green-600';
+                    if (score <= 9) return 'text-yellow-600';
+                    if (score <= 13) return 'text-orange-600';
+                    if (score <= 20) return 'text-red-600';
+                    return 'text-red-800 font-bold';
+                }
+                if (category === 'anxiety') {
+                    if (score <= 3) return 'text-green-600';
+                    if (score <= 5) return 'text-yellow-600';
+                    if (score <= 7) return 'text-orange-600';
+                    if (score <= 10) return 'text-red-600';
+                    return 'text-red-800 font-bold';
+                }
+                if (category === 'stress') {
+                    if (score <= 7) return 'text-green-600';
+                    if (score <= 9) return 'text-yellow-600';
+                    if (score <= 12) return 'text-orange-600';
+                    if (score <= 16) return 'text-red-600';
+                    return 'text-red-800 font-bold';
+                }
             }
-            if (category === 'anxiety') {
-                if (score <= 3) return 'text-green-600';
-                if (score <= 5) return 'text-yellow-600';
-                if (score <= 7) return 'text-orange-600';
-                if (score <= 10) return 'text-red-600';
-                return 'text-red-800 font-bold';
-            }
-            if (category === 'stress') {
-                if (score <= 7) return 'text-green-600';
-                if (score <= 9) return 'text-yellow-600';
-                if (score <= 12) return 'text-orange-600';
-                if (score <= 16) return 'text-red-600';
-                return 'text-red-800 font-bold';
-            }
-        }
 
-        function getStatusClass(status) {
-            switch (status.toLowerCase()) {
-                case 'confirmed': return 'bg-green-100 text-green-800';
-                case 'pending': return 'bg-yellow-100 text-yellow-800';
-                case 'cancelled': return 'bg-red-100 text-red-800';
-                default: return 'bg-gray-100 text-gray-800';
+            function getStatusClass(status) {
+                switch (status.toLowerCase()) {
+                    case 'confirmed':
+                        return 'bg-green-100 text-green-800';
+                    case 'pending':
+                        return 'bg-yellow-100 text-yellow-800';
+                    case 'cancelled':
+                        return 'bg-red-100 text-red-800';
+                    default:
+                        return 'bg-gray-100 text-gray-800';
+                }
             }
-        }
 
-        // Placeholder functions for interaction
-        window.viewAssessmentDetails = function (assessmentId) {
-            window.location.href = `/counsellor/assessment/${assessmentId}`;
-        }
+            // Placeholder functions for interaction
+            window.viewAssessmentDetails = function (assessmentId) {
+                window.location.href = `/counsellor/assessment/${assessmentId}`;
+            }
 
-        window.manageAppointment = function (appointmentId) {
-            window.location.href = `/counsellor/appointment/${appointmentId}`;
-        }
-    });
-</script>
+            window.manageAppointment = function (appointmentId) {
+                window.location.href = `/counsellor/appointment/${appointmentId}`;
+            }
+        });
+    </script>
 {% endblock %}
