@@ -1,135 +1,116 @@
-{% extends "base.html" %} {% block title %}Book Appointment{% endblock %} {% block content %}
-    <div class="container mx-auto px-4 py-16">
-        <div class="max-w-xl mx-auto bg-white shadow-md rounded-lg p-8">
-            <h1 class="text-3xl font-bold mb-6 text-center text-gray-800">
-                Book Counselling Appointment
-            </h1>
-
-            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-                <p class="text-blue-700">
-                    🕒 Our counselling team is dedicated to providing you with supportive
-                    and confidential guidance. Please select a convenient date and time for
-                    your appointment.
-                </p>
+{% extends "base.html" %}
+{% block title %}Book Appointment{% endblock %}
+{% block content %}
+<div class="flex flex-col items-center justify-center min-h-screen w-full">
+    <div class="flex flex-col items-center justify-center min-h-[500px] shadow-lg bg-white rounded-xl max-w-xl w-full p-10">
+        <div class="w-full">
+            <div class="mb-8">
+                <h2 class="text-3xl font-semibold text-gray-800 text-center">Book an Appointment</h2>
+                <p class="text-gray-600 text-center mt-2">Schedule a session with our counsellors</p>
             </div>
 
             <form id="appointmentForm" class="space-y-6">
-                <div>
-                    <label for="date" class="block text-sm font-medium text-gray-700 mb-2"
-                    >Preferred Date</label
-                    >
-                    <input
-                            type="date"
-                            id="date"
-                            name="date"
-                            required
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            min="{{ (now() + timedelta(days=1)).strftime('%Y-%m-%d') }}"
-                            max="{{ (now() + timedelta(days=30)).strftime('%Y-%m-%d') }}"
-                    />
+                <div class="flex w-full space-x-4">
+                    <div class="w-full">
+                        <label for="date" class="block text-sm font-medium text-gray-700 mb-2">Preferred Date</label>
+                        <input type="date" 
+                               id="date" 
+                               name="date" 
+                               required 
+                               min="{{ today_date }}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                    </div>
+
+                    <div class="w-full">
+                        <label for="time" class="block text-sm font-medium text-gray-700 mb-2">Preferred Time</label>
+                        <select id="time" 
+                                name="time" 
+                                required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select Time</option>
+                            <option value="09:00">9:00 AM</option>
+                            <option value="10:00">10:00 AM</option>
+                            <option value="11:00">11:00 AM</option>
+                            <option value="13:00">1:00 PM</option>
+                            <option value="14:00">2:00 PM</option>
+                            <option value="15:00">3:00 PM</option>
+                            <option value="16:00">4:00 PM</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div>
-                    <label for="time" class="block text-sm font-medium text-gray-700 mb-2"
-                    >Preferred Time</label
-                    >
-                    <select
-                            id="time"
-                            name="time"
+                    <label for="counsellor" class="block text-sm font-medium text-gray-700 mb-2">Preferred Counsellor</label>
+                    <select id="counsellor" 
+                            name="counsellor" 
                             required
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                        <option value="">Select a time</option>
-                        <option value="09:00">9:00 AM</option>
-                        <option value="10:00">10:00 AM</option>
-                        <option value="11:00">11:00 AM</option>
-                        <option value="14:00">2:00 PM</option>
-                        <option value="15:00">3:00 PM</option>
-                        <option value="16:00">4:00 PM</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label for="counsellor_id" class="block text-sm font-medium text-gray-700 mb-2">Preferred
-                        Counsellor</label>
-                    <select id="counsellor_id" name="counsellor_id" required
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="">Select Counsellor</option>
                         {% for counsellor in counsellors %}
-                            <option value="{{ counsellor.id }}">
-                                {{ counsellor.username }}
-                            </option>
+                            <option value="{{ counsellor.id }}">{{ counsellor.username }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
                 <div>
-                    <label for="reason" class="block text-sm font-medium text-gray-700 mb-2">Reason for
-                        Appointment</label>
-                    <textarea
-                            id="reason"
-                            name="reason"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            rows="4"
-                            placeholder="Brief description of why you want to book an appointment"
-                    ></textarea>
+                    <label for="reason" class="block text-sm font-medium text-gray-700 mb-2">Reason for Appointment</label>
+                    <textarea id="reason" 
+                              name="reason" 
+                              required
+                              rows="3"
+                              placeholder="Please briefly describe your reason for the appointment"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                 </div>
 
-                <div class="bg-gray-50 p-4 rounded-md text-sm text-gray-600">
-                    <p>
-                        📝 Note: Appointments are subject to counsellor availability. You will
-                        receive a confirmation email once your appointment is reviewed.
-                    </p>
-                </div>
-
-                <div>
-                    <button
-                            type="submit"
-                            class="w-full bg-blue-500 text-white py-3 rounded-md hover:bg-blue-600 transition duration-300 ease-in-out transform hover:scale-105"
-                    >
-                        Request Appointment
+                <div class="flex justify-end space-x-4">
+                    <a href="/appointments" 
+                       class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                        Cancel
+                    </a>
+                    <button type="submit" 
+                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                        Book Appointment
                     </button>
                 </div>
             </form>
         </div>
     </div>
+</div>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const form = document.getElementById("appointmentForm");
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('appointmentForm');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = {
+            date: document.getElementById('date').value,
+            time: document.getElementById('time').value,
+            counsellor: document.getElementById('counsellor').value,
+            reason: document.getElementById('reason').value
+        };
 
-            form.addEventListener("submit", function (e) {
-                e.preventDefault();
-
-                const formData = {
-                    date: document.getElementById("date").value,
-                    time: document.getElementById("time").value,
-                    reason: document.getElementById("reason").value,
-                    counsellor_id: document.getElementById("counsellor_id").value,
-                };
-
-                fetch("/book_appointment", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(formData),
-                })
-                    .then((response) => response.json())
-                    .then((data) => {
-                        if (data.success) {
-                            alert(data.message);
-                            window.location.href = "/results.html";
-                        } else {
-                            alert(data.message);
-                        }
-                    })
-                    .catch((error) => {
-                        console.error("Error:", error);
-                        alert("An error occurred while booking the appointment");
-                    });
-            });
+        fetch('/book_appointment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = '/appointments';
+            } else {
+                alert(data.message || 'An error occurred while booking the appointment');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while booking the appointment');
         });
-    </script>
+    });
+});
+</script>
 {% endblock %}

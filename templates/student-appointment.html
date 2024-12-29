@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Appointments{% endblock %}
+{% block content %}
+<div class="flex flex-col items-center justify-center min-h-screen w-full">
+    <div class="flex flex-col items-center justify-center min-h-[500px] shadow-lg bg-white rounded-xl max-w-4xl w-full p-10">
+        <div class="w-full">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-semibold text-gray-800">My Appointments</h2>
+                <a href="/book_appointment" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors duration-200">
+                    Book New Appointment
+                </a>
+            </div>
+
+            {% if appointments %}
+                <div class="space-y-4">
+                    {% for appointment in appointments %}
+                        <div class="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow duration-200">
+                            <div class="flex justify-between items-start">
+                                <div class="space-y-2">
+                                    <div class="flex items-center space-x-3">
+                                        <i data-lucide="calendar-check-2" class="text-gray-600"></i>
+                                        <span class="text-lg font-medium text-gray-800">
+                                            {{ appointment.date }} at {{ appointment.time | datetime_format }}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <i data-lucide="notepad-text" class="text-gray-600"></i>
+                                        <span class="text-gray-600">{{ appointment.reason }}</span>
+                                    </div>
+                                    <div class="flex items-center space-x-3">
+                                        <i data-lucide="book-user" class="text-gray-600"></i>
+                                        <span class="text-gray-600">{{ appointment.counsellor_name }}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    {% if appointment.status == 'pending' %}
+                                        <div class="flex flex-col space-y-2">
+                                            <span class="px-3 py-1 text-sm font-medium bg-yellow-100 text-yellow-800 rounded-full">
+                                                Pending
+                                            </span>
+                                            <form action="{{ url_for('cancel_appointment', appointment_id=appointment.id) }}" method="POST" class="inline">
+                                                <button type="submit" 
+                                                        class="text-sm text-red-600 hover:text-red-800 font-medium flex items-center space-x-1"
+                                                        onclick="return confirm('Are you sure you want to cancel this appointment?')">
+                                                    <i data-lucide="x-circle" class="w-4 h-4"></i>
+                                                    <span>Cancel</span>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    {% elif appointment.status == 'approved' %}
+                                        <span class="px-3 py-1 text-sm font-medium bg-green-100 text-green-800 rounded-full">
+                                            Approved
+                                        </span>
+                                    {% elif appointment.status == 'rejected' %}
+                                        <span class="px-3 py-1 text-sm font-medium bg-red-100 text-red-800 rounded-full">
+                                            Rejected
+                                        </span>
+                                    {% elif appointment.status == 'cancelled' %}
+                                        <span class="px-3 py-1 text-sm font-medium bg-red-100 text-red-800 rounded-full">
+                                            Cancelled
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-12 bg-gray-50 rounded-lg">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No appointments</h3>
+                    <p class="mt-1 text-sm text-gray-500">Get started by booking your first appointment.</p>
+                    <div class="mt-6">
+                        <a href="/book_appointment"
+                           class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Book New Appointment
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

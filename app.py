@@ -10,7 +10,7 @@ from flask import (
 )
 from database import get_db_connection, init_db
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_session import Session
+#from flask_session import Session
 from constant import DASS_QUESTIONS
 import sqlite3
 from datetime import datetime, timedelta
@@ -21,7 +21,7 @@ app = Flask(__name__)
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 
-Session(app)
+#Session(app)
 
 app.secret_key = "NYWFcxLeXCONcvuSJDKdPtnzojIRn8WeZoI2h+VnsKw="
 
@@ -77,6 +77,15 @@ def convert_timezone(date_str):
         dt = date_str
     return dt + timedelta(hours=8)
 
+@app.template_filter('datetime_format')
+def datetime_format(time_str):
+    try:
+        # Parse the time string (assuming it's in 24-hour format)
+        time_obj = datetime.strptime(time_str, '%H:%M')
+        # Convert to 12-hour format with AM/PM
+        return time_obj.strftime('%I:%M %p')
+    except:
+        return time_str
 
 @app.route("/")
 def index():
@@ -112,6 +121,31 @@ def results():
         return render_template("results.html", scores=scores)
     return render_template("results.html")
 
+
+@app.route("/appointments")
+@login_required
+def appointments():
+    user_appointments = []
+    conn = get_db_connection()
+    appointments = conn.execute(
+        "SELECT apt.id, s.username as student_name, apt.date, apt.time, apt.reason, apt.status, c.username as counsellor_name FROM appointments apt INNER JOIN students s ON apt.student_id = s.id INNER JOIN counsellors c ON apt.counsellor_id = c.id WHERE apt.student_id = ?", (session["user_id"],)
+    ).fetchall()
+    conn.close()
+
+    for appointment in appointments:
+        user_appointments.append(
+            {
+                "id": appointment["id"],
+                "student_name": appointment["student_name"],
+                "date": appointment["date"],
+                "time": appointment["time"],
+                "reason": appointment["reason"],
+                "status": appointment["status"],
+                "counsellor_name": appointment["counsellor_name"],
+            }
+        )
+
+    return render_template("student-appointment.html", appointments=user_appointments)
 
 @app.route("/submit", methods=["POST"])
 @login_required
@@ -469,115 +503,84 @@ def upcoming_appointments():
 @app.route("/book_appointment", methods=["GET", "POST"])
 @login_required
 def book_appointment():
-    if not session.get("user_id"):
-        return redirect(url_for("login"))
-
     if request.method == "POST":
-        data = request.get_json()
-
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
+            data = request.get_json()
+            
+            counsellor_id = data.get("counsellor")
+            date = data.get("date")
+            time = data.get("time")
+            reason = data.get("reason")
 
-            # Check if the student already has a pending or confirmed appointment
-            existing_appointment = cursor.execute(
-                "SELECT * FROM appointments WHERE student_id = ? AND status IN ('pending', 'confirmed')",
-                (session["user_id"],),
+            if not all([counsellor_id, date, time, reason]):
+                return jsonify({
+                    "success": False,
+                    "message": "Please fill in all fields"
+                })
+
+            conn = get_db_connection()
+            
+            # Check if the time slot is already booked
+            existing_appointment = conn.execute(
+                "SELECT COUNT(*) as count FROM appointments WHERE counsellor_id = ? AND date = ? AND time = ? AND status IN ('pending', 'approved')",
+                (counsellor_id, date, time),
             ).fetchone()
 
-            if existing_appointment:
-                return (
-                    jsonify(
-                        {
-                            "success": False,
-                            "message": "You already have a pending or confirmed appointment.",
-                        }
-                    ),
-                    400,
-                )
+            if existing_appointment["count"] > 0:
+                conn.close()
+                return jsonify({
+                    "success": False,
+                    "message": "This time slot is already booked. Please choose another time."
+                })
 
-            # Insert new appointment
-            cursor.execute(
+            # Check counsellor's current student count for the time slot
+            student_count = conn.execute(
+                "SELECT COUNT(*) as count FROM appointments WHERE counsellor_id = ? AND date = ? AND time = ? AND status IN ('pending', 'approved')",
+                (counsellor_id, date, time),
+            ).fetchone()
+
+            if student_count["count"] >= 3:
+                conn.close()
+                return jsonify({
+                    "success": False,
+                    "message": "This counsellor has reached maximum capacity for this time slot. Please choose another time or counsellor."
+                })
+
+            # If all checks pass, create the appointment
+            conn.execute(
                 """
                 INSERT INTO appointments 
-                (student_id, date, time, reason, status, counsellor_id) 
-                VALUES (?, ?, ?, ?, ?, ?)
+                (student_id, counsellor_id, date, time, reason, status) 
+                VALUES (?, ?, ?, ?, ?, 'pending')
                 """,
-                (
-                    session["user_id"],
-                    data.get("date"),
-                    data.get("time"),
-                    data.get("reason", "General Counselling"),
-                    "pending",
-                    data.get("counsellor_id"),
-                ),
+                (session["user_id"], counsellor_id, date, time, reason)
             )
-
             conn.commit()
             conn.close()
 
-            return jsonify(
-                {"success": True, "message": "Appointment booked successfully!"}
-            )
+            return jsonify({
+                "success": True,
+                "message": "Appointment booked successfully!"
+            })
 
         except Exception as e:
-            return jsonify({"success": False, "message": str(e)}), 500
+            print("Error:", str(e))
+            return jsonify({
+                "success": False,
+                "message": f"An error occurred: {str(e)}"
+            })
 
     # GET request - render booking page
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cousellors = cursor.execute("SELECT * FROM counsellors")
-    return render_template("book_appointment.html", counsellors=cousellors)
-
-
-def calculate_category_score(answers, category):
-    category_questions = [q for q in DASS_QUESTIONS if q["category"] == category]
-    return sum(
-        answer["answer"] * 2
-        for answer in answers
-        if any(
-            q["id"] == answer["id"] and q["category"] == category
-            for q in category_questions
-        )
-    )
-
-
-def interpret_scores(scores):
-    interpretations = {
-        "depression": [
-            (0, "Normal"),
-            (10, "Mild"),
-            (14, "Moderate"),
-            (21, "Severe"),
-            (float("inf"), "Extremely Severe"),
-        ],
-        "anxiety": [
-            (0, "Normal"),
-            (8, "Mild"),
-            (10, "Moderate"),
-            (15, "Severe"),
-            (float("inf"), "Extremely Severe"),
-        ],
-        "stress": [
-            (0, "Normal"),
-            (15, "Mild"),
-            (19, "Moderate"),
-            (26, "Severe"),
-            (float("inf"), "Extremely Severe"),
-        ],
-    }
-
-    result = {}
-    for category, score in scores.items():
-        for threshold, level in interpretations[category]:
-            if score <= threshold:
-                result[category] = {"score": score, "level": level}
-                break
-
-    return result
+    counsellors = conn.execute("SELECT * FROM counsellors").fetchall()
+    conn.close()
+    
+    today = datetime.now().strftime('%Y-%m-%d')
+    return render_template("book_appointment.html", counsellors=counsellors, today_date=today)
 
 
 @app.route("/counsellor/register", methods=["GET", "POST"])
+@counsellor_login_required
 def counsellor_register():
     if request.method == "POST":
         username = request.form.get("username")
@@ -836,6 +839,85 @@ def assessments():
         print({str(e)})
         flash(f"Error retrieving assessment history: {str(e)}", "error")
         return redirect(url_for("counsellor_dashboard"))
+
+
+@app.route("/cancel_appointment/<int:appointment_id>", methods=["POST"])
+@login_required
+def cancel_appointment(appointment_id):
+    try:
+        conn = get_db_connection()
+        
+        # Check if the appointment belongs to the current user and is in pending status
+        appointment = conn.execute(
+            "SELECT * FROM appointments WHERE id = ? AND student_id = ? AND status = 'pending'",
+            (appointment_id, session["user_id"]),
+        ).fetchone()
+
+        if not appointment:
+            flash("Appointment not found or cannot be cancelled", "error")
+            return redirect(url_for("appointments"))
+
+        # Cancel the appointment
+        conn.execute(
+            "UPDATE appointments SET status = 'cancelled' WHERE id = ?",
+            (appointment_id,),
+        )
+        conn.commit()
+        conn.close()
+
+        flash("Appointment cancelled successfully", "success")
+        return redirect(url_for("appointments"))
+
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "error")
+        return redirect(url_for("appointments"))
+
+
+def calculate_category_score(answers, category):
+    category_questions = [q for q in DASS_QUESTIONS if q["category"] == category]
+    return sum(
+        answer["answer"] * 2
+        for answer in answers
+        if any(
+            q["id"] == answer["id"] and q["category"] == category
+            for q in category_questions
+        )
+    )
+
+
+def interpret_scores(scores):
+    interpretations = {
+        "depression": [
+            (0, "Normal"),
+            (10, "Mild"),
+            (14, "Moderate"),
+            (21, "Severe"),
+            (float("inf"), "Extremely Severe"),
+        ],
+        "anxiety": [
+            (0, "Normal"),
+            (8, "Mild"),
+            (10, "Moderate"),
+            (15, "Severe"),
+            (float("inf"), "Extremely Severe"),
+        ],
+        "stress": [
+            (0, "Normal"),
+            (15, "Mild"),
+            (19, "Moderate"),
+            (26, "Severe"),
+            (float("inf"), "Extremely Severe"),
+        ],
+    }
+
+    result = {}
+    for category, score in scores.items():
+        for threshold, level in interpretations[category]:
+            if score <= threshold:
+                result[category] = {"score": score, "level": level}
+                break
+
+    return result
 
 
 init_db()
